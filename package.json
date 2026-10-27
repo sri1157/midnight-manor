@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "compare": "npm run compare --prefix server",
+    "test:router": "npm run test:router --prefix server",
+    "test:json": "npm run test:json --prefix server",
+    "case": "npm run case --prefix server",
+    "solution": "npm run solution --prefix server"
+  }
+}
