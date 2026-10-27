@@ -1,5 +1,6 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { config } from '../config.js';
+import { ROOMS } from '../game/mansion.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O: easy to read aloud
 const MAX_PLAYERS = 8;
@@ -142,6 +143,25 @@ export function startGame(code, playerId) {
 
   room.status = 'playing';
   room.startedAt = Date.now();
+  return room;
+}
+
+/** Move a player through a doorway. The server checks the doors, not the browser. */
+export function movePlayer(code, playerId, to) {
+  const room = getRoom(code);
+  if (room.status !== 'playing') throw new RoomError('NOT_PLAYING', 'The investigation has not started yet.');
+
+  const player = room.players.find((p) => p.id === playerId);
+  if (!player) throw new RoomError('NOT_IN_ROOM', 'You are not in this game.');
+
+  const target = ROOMS.find((r) => r.id === to);
+  if (!target) throw new RoomError('BAD_ROOM', 'That room does not exist.');
+  if (to === player.location) return room;
+
+  const here = ROOMS.find((r) => r.id === player.location);
+  if (!here?.connects.includes(to)) throw new RoomError('NO_DOOR', 'No door leads there from here.');
+
+  player.location = to;
   return room;
 }
 

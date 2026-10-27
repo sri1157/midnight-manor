@@ -1,0 +1,32 @@
+.game {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 8px;
+  padding: 12px 16px 16px;
+  background: radial-gradient(ellipse at 50% 30%, #1a1522 0%, var(--bg) 75%);
+}
+
+.game-bar { text-align: center; }
+.game-title { font-size: clamp(1.1rem, 4vw, 1.6rem); color: var(--gold); }
+.game-where { margin: 4px 0 0; color: var(--text-dim); }
+.game-where strong { color: var(--text); }
+
+.game-map { position: relative; min-height: 0; }
+.mansion-map { position: absolute; inset: 0; }
+.mansion-map canvas { display: block; }
+
+.game-hint { margin: 0; text-align: center; color: var(--text-dim); font-size: 0.85rem; }
+
+.game-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  border: 1px solid var(--blood);
+  color: #f2c4c9;
+  font-size: 0.9rem;
+}

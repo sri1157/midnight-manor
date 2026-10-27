@@ -1,5 +1,5 @@
 import {
-  createRoom, joinRoom, resumeSession, setConnected, leaveRoom, startGame, publicRoomState, RoomError,
+  createRoom, joinRoom, resumeSession, setConnected, leaveRoom, startGame, movePlayer, publicRoomState, RoomError,
 } from './roomManager.js';
 import { claimCase, peekCase } from '../db/caseStore.js';
 import { isDbConfigured } from '../db/supabase.js';
@@ -91,6 +91,13 @@ export function registerSocketHandlers(io) {
     socket.on('game:start', handle(async () => {
       const { code, playerId } = seat();
       const room = startGame(code, playerId);
+      broadcast(room);
+      return {};
+    }));
+
+    socket.on('player:move', handle(async ({ to }) => {
+      const { code, playerId } = seat();
+      const room = movePlayer(code, playerId, to);
       broadcast(room);
       return {};
     }));
