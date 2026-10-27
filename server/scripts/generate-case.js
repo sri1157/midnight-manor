@@ -2,6 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createCase } from '../src/game/caseEngine.js';
 import { roomName, TIME_SLOTS, ROOMS } from '../src/game/mansion.js';
+import { saveCase, countReadyCases } from '../src/db/caseStore.js';
+import { isDbConfigured } from '../src/db/supabase.js';
 
 console.log('Creating a mystery...\n');
 const started = Date.now();
@@ -48,4 +50,10 @@ console.log('\n--- EVENTS ---');
 for (const e of c.events) console.log(`  minute ${e.minute}: ${e.narratorLine}`);
 
 console.log(`\nSaved to ${path.relative(process.cwd(), file)}`);
+if (isDbConfigured()) {
+  const id = await saveCase({ caseData: c, meta, validation });
+  console.log(`Saved to Supabase: ${id} (${await countReadyCases()} case(s) ready in the pool)`);
+} else {
+  console.log('Supabase not configured, skipped database save.');
+}
 console.log('Try to solve it! Then run: npm run solution');
