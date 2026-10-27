@@ -49,13 +49,16 @@ export function useGame() {
   const createRoom = useCallback(async (name) => enter(await request('room:create', { name })), [enter]);
   const joinRoom = useCallback(async (code, name) => enter(await request('room:join', { code, name })), [enter]);
 
-  const leaveRoom = useCallback(() => {
+  const leaveRoom = useCallback(async () => {
+    await request('room:leave'); // tell the server, so others see you leave
     clearSession();
     setRoom(null);
     setPlayerId(null);
   }, []);
 
+  const startGame = useCallback(() => request('game:start'), []);
+
   const me = room?.players.find((p) => p.id === playerId) ?? null;
 
-  return { connected, room, me, createRoom, joinRoom, leaveRoom };
+  return { connected, room, me, createRoom, joinRoom, leaveRoom, startGame };
 }

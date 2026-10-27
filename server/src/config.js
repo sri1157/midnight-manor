@@ -9,4 +9,5 @@ export function env(name, fallback = undefined) {
 export const config = {
   port: Number(env('PORT', '3001')),
   isProduction: env('NODE_ENV') === 'production',
+  minPlayers: Number(env('MIN_PLAYERS', '3')),
 };

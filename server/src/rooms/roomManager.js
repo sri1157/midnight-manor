@@ -1,4 +1,5 @@
 import { randomInt, randomUUID } from 'node:crypto';
+import { config } from '../config.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O: easy to read aloud
 const MAX_PLAYERS = 8;
@@ -39,7 +40,7 @@ function addPlayer(room, rawName, isHost) {
     id: randomUUID(),
     name,
     isHost,
-    color: AVATAR_COLORS[room.players.length % AVATAR_COLORS.length],
+    color: AVATAR_COLORS.find((c) => !room.players.some((p) => p.color === c)) ?? AVATAR_COLORS[0],
     connected: true,
     location: 'hall',
   };
@@ -104,11 +105,53 @@ export function setConnected(code, playerId, connected) {
   return room;
 }
 
+/** Remove a player for good. Hands the host role on; deletes the room if empty. */
+export function leaveRoom(code, playerId) {
+  const room = rooms.get(code);
+  if (!room) return null;
+
+  room.players = room.players.filter((p) => p.id !== playerId);
+  for (const [token, ref] of tokens) {
+    if (ref.playerId === playerId) tokens.delete(token);
+  }
+
+  if (room.players.length === 0) {
+    rooms.delete(code);
+    return null;
+  }
+  if (!room.players.some((p) => p.isHost)) {
+    const next = room.players.find((p) => p.connected) ?? room.players[0];
+    next.isHost = true;
+  }
+  return room;
+}
+
+/** The host starts the game. Every rule is checked here, not just in the browser. */
+export function startGame(code, playerId) {
+  const room = getRoom(code);
+  const player = room.players.find((p) => p.id === playerId);
+
+  if (!player?.isHost) throw new RoomError('NOT_HOST', 'Only the host can start the game.');
+  if (room.status !== 'lobby') throw new RoomError('GAME_STARTED', 'The game has already started.');
+
+  const present = room.players.filter((p) => p.connected).length;
+  if (present < config.minPlayers) {
+    throw new RoomError('NOT_ENOUGH_PLAYERS', `You need at least ${config.minPlayers} detectives to start.`);
+  }
+  if (room.case.status !== 'ready') throw new RoomError('CASE_NOT_READY', 'The mystery is not ready yet.');
+
+  room.status = 'playing';
+  room.startedAt = Date.now();
+  return room;
+}
+
 /** The ONLY room data ever sent to browsers. No case contents, no tokens. */
 export function publicRoomState(room) {
   return {
     code: room.code,
     status: room.status,
+    minPlayers: config.minPlayers,
+    maxPlayers: MAX_PLAYERS,
     players: room.players.map(({ id, name, isHost, color, connected, location }) => ({
       id, name, isHost, color, connected, location,
     })),

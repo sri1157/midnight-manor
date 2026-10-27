@@ -1,4 +1,6 @@
-import { createRoom, joinRoom, resumeSession, setConnected, publicRoomState, RoomError } from './roomManager.js';
+import {
+  createRoom, joinRoom, resumeSession, setConnected, leaveRoom, startGame, publicRoomState, RoomError,
+} from './roomManager.js';
 import { claimCase, peekCase } from '../db/caseStore.js';
 import { isDbConfigured } from '../db/supabase.js';
 import { config } from '../config.js';
@@ -67,6 +69,30 @@ export function registerSocketHandlers(io) {
       bind(room, player);
       broadcast(room);
       return { playerId: player.id, state: publicRoomState(room) };
+    }));
+
+    /** The room and player this socket belongs to, from server-side data only. */
+    const seat = () => {
+      const { code, playerId } = socket.data;
+      if (!code) throw new RoomError('NOT_IN_ROOM', 'You are not in a room.');
+      return { code, playerId };
+    };
+
+    socket.on('room:leave', handle(async () => {
+      const { code, playerId } = seat();
+      socket.leave(channel(code));
+      socket.data.code = null;
+      socket.data.playerId = null;
+      const room = leaveRoom(code, playerId);
+      if (room) broadcast(room);
+      return {};
+    }));
+
+    socket.on('game:start', handle(async () => {
+      const { code, playerId } = seat();
+      const room = startGame(code, playerId);
+      broadcast(room);
+      return {};
     }));
 
     socket.on('disconnect', () => {
