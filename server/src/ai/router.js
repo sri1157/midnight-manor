@@ -4,9 +4,10 @@ import { checkQuota, recordRequest } from './usageTracker.js';
 
 /** Which providers handle each task, in order of preference. */
 export const ROUTES = {
-  case:    ['gemini', 'mistral', 'groq', 'openrouter'],   // quality + long structured output
-  suspect: ['groq', 'mistral', 'openrouter', 'gemini'],   // speed, many calls per game
-  reveal:  ['gemini', 'groq', 'mistral', 'openrouter'],   // storytelling, once per game
+  case:      ['gemini', 'mistral', 'groq', 'openrouter'],   // quality + long structured output
+  suspect:   ['groq', 'mistral', 'openrouter', 'gemini'],   // speed, many calls per game
+  reveal:    ['gemini', 'groq', 'mistral', 'openrouter'],   // storytelling, once per game
+  detective: ['groq', 'gemini', 'openrouter', 'mistral'],   // fast reasoning, many calls per game
 };
 
 /** How long a provider rests after each kind of failure. */

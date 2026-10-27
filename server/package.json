@@ -9,7 +9,9 @@
     "scripts": {
         "compare": "node scripts/compare-providers.js",
         "test:router": "node scripts/test-router.js",
-        "test:json": "node scripts/test-json.js"
+        "test:json": "node scripts/test-json.js",
+        "case": "node scripts/generate-case.js",
+        "solution": "node scripts/show-solution.js"
     },
     "dependencies": {
         "dotenv": "^18.0.9",
