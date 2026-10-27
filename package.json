@@ -5,6 +5,9 @@
     "test:router": "npm run test:router --prefix server",
     "test:json": "npm run test:json --prefix server",
     "case": "npm run case --prefix server",
-    "solution": "npm run solution --prefix server"
+    "solution": "npm run solution --prefix server",
+    "test:rooms": "npm run test:rooms --prefix server",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client"
   }
 }

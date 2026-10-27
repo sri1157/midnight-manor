@@ -47,3 +47,19 @@ export async function countReadyCases() {
   if (error) throw new Error(`Counting cases failed: ${error.message}`);
   return count ?? 0;
 }
+
+/** Read the best ready case WITHOUT claiming it (development only). */
+export async function peekCase() {
+  requireDb();
+  const { data, error } = await supabase
+    .from('cases')
+    .select('id, case_json, meta')
+    .eq('status', 'ready')
+    .order('passed', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw new Error(`Peeking case failed: ${error.message}`);
+  return data ? { id: data.id, caseData: data.case_json, meta: data.meta } : null;
+}

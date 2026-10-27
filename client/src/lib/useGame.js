@@ -1,0 +1,61 @@
+import { useCallback, useEffect, useState } from 'react';
+import { socket, request, saveSession, loadSession, clearSession } from './socket.js';
+
+export function useGame() {
+  const [connected, setConnected] = useState(socket.connected);
+  const [room, setRoom] = useState(null);
+  const [playerId, setPlayerId] = useState(null);
+
+  useEffect(() => {
+    const onConnect = async () => {
+      setConnected(true);
+      const saved = loadSession();
+      if (!saved?.token) return;
+      const reply = await request('room:resume', { token: saved.token });
+      if (reply.ok) {
+        setPlayerId(reply.playerId);
+        setRoom(reply.state);
+      } else {
+        clearSession(); // stale token: back to the home screen
+      }
+    };
+    const onDisconnect = () => setConnected(false);
+    const onState = (state) => setRoom(state);
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('room:state', onState);
+
+    if (socket.connected) onConnect(); // hot reload: already connected, no new event
+    else socket.connect();
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('room:state', onState);
+    };
+  }, []);
+
+  /** After a successful create or join: remember the session and enter the room. */
+  const enter = useCallback((reply) => {
+    if (reply.ok) {
+      saveSession({ token: reply.token, code: reply.state.code });
+      setPlayerId(reply.playerId);
+      setRoom(reply.state);
+    }
+    return reply;
+  }, []);
+
+  const createRoom = useCallback(async (name) => enter(await request('room:create', { name })), [enter]);
+  const joinRoom = useCallback(async (code, name) => enter(await request('room:join', { code, name })), [enter]);
+
+  const leaveRoom = useCallback(() => {
+    clearSession();
+    setRoom(null);
+    setPlayerId(null);
+  }, []);
+
+  const me = room?.players.find((p) => p.id === playerId) ?? null;
+
+  return { connected, room, me, createRoom, joinRoom, leaveRoom };
+}
