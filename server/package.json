@@ -3,9 +3,17 @@
     "version": "0.1.0",
     "private": true,
     "type": "module",
-    "engines": { "node": ">=20" },
+    "engines": {
+        "node": ">=20"
+    },
     "scripts": {
-      "compare": "node scripts/compare-providers.js",
-      "test:router": "node scripts/test-router.js"
+        "compare": "node scripts/compare-providers.js",
+        "test:router": "node scripts/test-router.js",
+        "test:json": "node scripts/test-json.js"
+    },
+    "dependencies": {
+        "dotenv": "^18.0.9",
+        "openai": "^7.45.1",
+        "zod": "^4.6.7"
     }
-  }
+}

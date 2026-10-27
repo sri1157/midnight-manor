@@ -1,5 +1,6 @@
 import { chatWith, LLMError } from './llmClient.js';
 import { PROVIDERS, configuredProviders } from './providers.js';
+import { checkQuota, recordRequest } from './usageTracker.js';
 
 /** Which providers handle each task, in order of preference. */
 export const ROUTES = {
@@ -123,6 +124,7 @@ export async function ask(task, options = {}) {
   const coolingDown = [];
 
   const tryProvider = async (id) => {
+    recordRequest(id);
     try {
       const result = await chatWith(id, requestOptions);
       if (validate && !validate(result.text)) {
@@ -144,8 +146,13 @@ export async function ask(task, options = {}) {
     }
   };
 
-  // Pass 1: healthy providers, in route order.
+  // Pass 1: healthy providers with quota left, in route order.
   for (const id of candidates) {
+    const quota = checkQuota(id);
+    if (!quota.ok) {
+      attempts.push({ provider: id, skipped: quota.reason });
+      continue;
+    }
     const skip = skipReason(id);
     if (skip) {
       attempts.push({ provider: id, skipped: skip });
@@ -156,8 +163,9 @@ export async function ask(task, options = {}) {
     if (result) return result;
   }
 
-  // Pass 2: last resort, retry providers that were only cooling down.
+  // Pass 2: last resort, retry providers that were only cooling down (never over quota).
   for (const id of coolingDown) {
+    if (!checkQuota(id).ok) continue;
     const result = await tryProvider(id);
     if (result) return result;
   }
