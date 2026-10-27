@@ -5,6 +5,7 @@
     "type": "module",
     "engines": { "node": ">=20" },
     "scripts": {
-      "compare": "node scripts/compare-providers.js"
+      "compare": "node scripts/compare-providers.js",
+      "test:router": "node scripts/test-router.js"
     }
   }

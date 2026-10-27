@@ -47,7 +47,7 @@ function getClient(providerId) {
 
 /**
  * Send one chat request to one specific provider.
- * Returns { text, provider, model, latencyMs, usage } or throws LLMError.
+ * Returns { text, provider, model, latencyMs, finishReason, usage } or throws LLMError.
  */
 export async function chatWith(providerId, { messages, json = false, temperature = 0.8, maxTokens = 800, model } = {}) {
   const client = getClient(providerId);
@@ -73,6 +73,7 @@ export async function chatWith(providerId, { messages, json = false, temperature
       provider: providerId,
       model: useModel,
       latencyMs: Date.now() - started,
+      finishReason: response.choices?.[0]?.finish_reason ?? null,
       usage: response.usage ?? null,
     };
   } catch (err) {

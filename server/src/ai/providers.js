@@ -37,7 +37,7 @@ export const PROVIDERS = {
     label: 'OpenRouter',
     baseURL: 'https://openrouter.ai/api/v1',
     keyEnv: 'OPENROUTER_API_KEY',
-    model: env('OPENROUTER_MODEL', 'openrouter/free'),
+    model: env('OPENROUTER_MODEL', 'nvidia/nemotron-3-ultra-550b-a55b:free'),
     free: true,
     strengths: ['variety'],
     limits: { rpm: 20, rpd: 50 },
