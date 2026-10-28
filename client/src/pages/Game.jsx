@@ -1,12 +1,14 @@
 import { useRef, useState } from 'react';
 import MansionMap from '../map/MansionMap.jsx';
+import Interrogation from '../components/Interrogation.jsx';
 import { roomName } from '../map/layout.js';
 import { shortName } from '../lib/names.js';
 import './Game.css';
 
-export default function Game({ room, me, onMove, onSearch, onLeave }) {
+export default function Game({ room, me, onMove, onSearch, onAsk, onLeave }) {
   const [toast, setToast] = useState('');
   const [searching, setSearching] = useState(false);
+  const [talkingTo, setTalkingTo] = useState(null);
   const timer = useRef(null);
   const game = room.game;
 
@@ -33,6 +35,8 @@ export default function Game({ room, me, onMove, onSearch, onLeave }) {
 
   const here = me?.location;
   const suspectHere = game.suspects.find((s) => s.location === here);
+  // the panel closes by itself if you walk away from the suspect
+  const openSuspect = talkingTo && suspectHere?.id === talkingTo ? suspectHere : null;
   const searched = game.searchedRooms.includes(here);
   const clues = [...game.clues].reverse();
 
@@ -60,6 +64,17 @@ export default function Game({ room, me, onMove, onSearch, onLeave }) {
             onMove={move}
             onBlocked={showToast}
           />
+          {openSuspect && (
+            <Interrogation
+              suspect={openSuspect}
+              transcript={game.interrogations[openSuspect.id] ?? []}
+              thinking={game.thinking.includes(openSuspect.id)}
+              meName={me?.name}
+              cooldownMs={game.askCooldownMs}
+              onAsk={onAsk}
+              onClose={() => setTalkingTo(null)}
+            />
+          )}
         </div>
 
         <aside className="game-panel">
@@ -71,7 +86,9 @@ export default function Game({ room, me, onMove, onSearch, onLeave }) {
                 <p className="suspect-name">{suspectHere.name}</p>
                 <p className="suspect-meta">{suspectHere.occupation} · {suspectHere.personality}</p>
                 <p className="suspect-says">"{suspectHere.says}"</p>
-                <button className="btn btn-ghost" disabled>Question {shortName(suspectHere.name)} (soon)</button>
+                <button className="btn btn-ghost" onClick={() => setTalkingTo(suspectHere.id)}>
+                  Question {shortName(suspectHere.name)}
+                </button>
               </div>
             ) : (
               <p className="panel-empty">No one is here.</p>
@@ -92,7 +109,9 @@ export default function Game({ room, me, onMove, onSearch, onLeave }) {
                     <strong>{s.name}</strong>
                     <small>{s.occupation}</small>
                   </span>
-                  <span className="suspect-where">{roomName(s.location)}</span>
+                  <span className="suspect-where">
+                    {game.thinking.includes(s.id) ? <em className="suspect-talking">answering...</em> : roomName(s.location)}
+                  </span>
                 </li>
               ))}
             </ul>

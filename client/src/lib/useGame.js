@@ -59,8 +59,12 @@ export function useGame() {
   const startGame = useCallback(() => request('game:start'), []);
   const movePlayer = useCallback((to) => request('player:move', { to }), []);
   const searchRoom = useCallback(() => request('room:search'), []);
+  const askSuspect = useCallback(
+    (suspectId, question) => request('suspect:ask', { suspectId, question }, 30000),
+    [],
+  );
 
   const me = room?.players.find((p) => p.id === playerId) ?? null;
 
-  return { connected, room, me, createRoom, joinRoom, leaveRoom, startGame, movePlayer, searchRoom };
+  return { connected, room, me, createRoom, joinRoom, leaveRoom, startGame, movePlayer, searchRoom, askSuspect };
 }

@@ -1,4 +1,5 @@
 {
+  "name": "midnight-manor",
   "private": true,
   "scripts": {
     "compare": "npm run compare --prefix server",
@@ -7,6 +8,7 @@
     "case": "npm run case --prefix server",
     "solution": "npm run solution --prefix server",
     "test:rooms": "npm run test:rooms --prefix server",
+    "interrogate": "npm run interrogate --prefix server",
     "server": "npm run dev --prefix server",
     "client": "npm run dev --prefix client"
   }

@@ -104,6 +104,8 @@
 .suspect-info strong { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .suspect-info small { color: var(--text-dim); font-size: 0.75rem; }
 .suspect-where { font-size: 0.8rem; color: var(--text-dim); }
+.suspect-talking { color: var(--gold); font-style: normal; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
 .clue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .clue {

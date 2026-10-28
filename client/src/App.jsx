@@ -14,5 +14,14 @@ export default function App() {
     return <Lobby room={game.room} me={game.me} onStart={game.startGame} onLeave={game.leaveRoom} />;
   }
 
-  return <Game room={game.room} me={game.me} onMove={game.movePlayer} onSearch={game.searchRoom} onLeave={game.leaveRoom} />;
+  return (
+    <Game
+      room={game.room}
+      me={game.me}
+      onMove={game.movePlayer}
+      onSearch={game.searchRoom}
+      onAsk={game.askSuspect}
+      onLeave={game.leaveRoom}
+    />
+  );
 }

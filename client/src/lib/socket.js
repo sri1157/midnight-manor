@@ -8,9 +8,9 @@ export const socket = io(import.meta.env.VITE_SERVER_URL ?? 'http://localhost:30
 });
 
 /** Send an event and wait for the server's reply, with a timeout. */
-export function request(event, payload = {}) {
+export function request(event, payload = {}, timeoutMs = 8000) {
   return new Promise((resolve) => {
-    socket.timeout(8000).emit(event, payload, (err, reply) => {
+    socket.timeout(timeoutMs).emit(event, payload, (err, reply) => {
       if (err) resolve({ ok: false, error: 'TIMEOUT', message: 'The manor is not answering. Try again.' });
       else resolve(reply);
     });

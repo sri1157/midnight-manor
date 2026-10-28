@@ -16,7 +16,7 @@ const COOLDOWN_MS = {
   server: 30_000,
   timeout: 30_000,
   empty: 10_000,
-  invalid: 30_000,   // answered, but the answer was unusable
+  invalid: 0,        // a bad answer, not a sick provider
   truncated: 0,      // reply cut off by the token limit
   unknown: 15_000,
   bad_request: 0, // this request was bad; others may be fine
@@ -160,7 +160,8 @@ export async function ask(task, options = {}) {
       if (skip === 'cooldown') coolingDown.push(id);
       continue;
     }
-    const result = await tryProvider(id);
+    let result = await tryProvider(id);
+    if (!result && attempts.at(-1)?.error === 'invalid') result = await tryProvider(id); // a fresh try is usually fine
     if (result) return result;
   }
 

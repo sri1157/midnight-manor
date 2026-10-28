@@ -1,6 +1,8 @@
 import { randomInt } from 'node:crypto';
 import { ROOMS } from './mansion.js';
 
+export const ASK_COOLDOWN_MS = 8000; // per player, between questions: protects the free AI quota
+
 const SUSPECT_ROOMS = ROOMS.map((r) => r.id).filter((id) => id !== 'hall'); // players start in the hall
 
 function shuffle(items) {
@@ -77,5 +79,6 @@ export function gameView(room) {
       c.suspects.map((s) => [s.id, (g.conversations[s.id] ?? []).slice(-20).map(({ asker, q, a }) => ({ asker, q, a }))]),
     ),
     thinking: Object.keys(g.busy).filter((id) => g.busy[id]),
+    askCooldownMs: ASK_COOLDOWN_MS,
   };
 }

@@ -1,7 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { config } from '../config.js';
 import { ROOMS } from '../game/mansion.js';
-import { setupGame, revealClues, gameView } from '../game/gameState.js';
+import { setupGame, revealClues, gameView, ASK_COOLDOWN_MS } from '../game/gameState.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O: easy to read aloud
 const MAX_PLAYERS = 8;
@@ -189,12 +189,18 @@ export function beginQuestion(code, playerId, suspectId, question) {
   if (g.suspectRooms[suspectId] !== player.location) throw new RoomError('NOT_HERE', 'That suspect is not in this room.');
   if (g.busy[suspectId]) throw new RoomError('SUSPECT_BUSY', 'They are already answering someone. Wait a moment.');
 
+  const waitMs = (player.lastAskAt ?? 0) + ASK_COOLDOWN_MS - Date.now();
+  if (waitMs > 0) {
+    throw new RoomError('COOLDOWN', `Catch your breath. You can ask again in ${Math.ceil(waitMs / 1000)}s.`);
+  }
+
   const q = String(question ?? '').trim().slice(0, 300);
   if (!q) throw new RoomError('EMPTY_QUESTION', 'Ask them something first.');
 
   const entry = { asker: player.name, q, a: null };
   (g.conversations[suspectId] ??= []).push(entry);
   g.busy[suspectId] = true;
+  player.lastAskAt = Date.now();
   return { room, entry };
 }
 
