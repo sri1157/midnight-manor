@@ -21,6 +21,8 @@ export function setupGame(room) {
     found: [],          // [{ id, by, at }]
     searchedRooms: [],
     firedEventIds: [],  // filled by the event director in Session 6
+    conversations: {}, // suspectId -> [{ asker, q, a }]
+    busy: {},          // suspectId -> true while answering
   };
 }
 
@@ -71,5 +73,9 @@ export function gameView(room) {
       return { id: clue.id, title: clue.title, description: clue.description, room: clue.room, foundBy: f.by };
     }),
     searchedRooms: g.searchedRooms,
+    interrogations: Object.fromEntries(
+      c.suspects.map((s) => [s.id, (g.conversations[s.id] ?? []).slice(-20).map(({ asker, q, a }) => ({ asker, q, a }))]),
+    ),
+    thinking: Object.keys(g.busy).filter((id) => g.busy[id]),
   };
 }

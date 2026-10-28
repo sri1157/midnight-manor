@@ -177,6 +177,35 @@ export function searchRoom(code, playerId) {
   return { room, added };
 }
 
+/** Check a question and record it as pending. The AI answers afterwards. */
+export function beginQuestion(code, playerId, suspectId, question) {
+  const room = getRoom(code);
+  if (room.status !== 'playing') throw new RoomError('NOT_PLAYING', 'The investigation has not started yet.');
+  const player = room.players.find((p) => p.id === playerId);
+  if (!player) throw new RoomError('NOT_IN_ROOM', 'You are not in this game.');
+
+  const g = room.game;
+  if (!(suspectId in g.suspectRooms)) throw new RoomError('BAD_SUSPECT', 'No such suspect.');
+  if (g.suspectRooms[suspectId] !== player.location) throw new RoomError('NOT_HERE', 'That suspect is not in this room.');
+  if (g.busy[suspectId]) throw new RoomError('SUSPECT_BUSY', 'They are already answering someone. Wait a moment.');
+
+  const q = String(question ?? '').trim().slice(0, 300);
+  if (!q) throw new RoomError('EMPTY_QUESTION', 'Ask them something first.');
+
+  const entry = { asker: player.name, q, a: null };
+  (g.conversations[suspectId] ??= []).push(entry);
+  g.busy[suspectId] = true;
+  return { room, entry };
+}
+
+/** Store the answer, or remove the question if the suspect could not answer. */
+export function finishQuestion(room, suspectId, entry, answer) {
+  const conv = room.game.conversations[suspectId];
+  if (answer) entry.a = answer;
+  else conv.splice(conv.indexOf(entry), 1);
+  room.game.busy[suspectId] = false;
+}
+
 /** The ONLY room data ever sent to browsers. No case contents, no tokens. */
 export function publicRoomState(room) {
   return {

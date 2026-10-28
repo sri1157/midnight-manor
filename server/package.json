@@ -14,7 +14,8 @@
         "test:json": "node scripts/test-json.js",
         "case": "node scripts/generate-case.js",
         "solution": "node scripts/show-solution.js",
-        "test:rooms": "node scripts/test-rooms.js"
+        "test:rooms": "node scripts/test-rooms.js",
+        "interrogate": "node scripts/interrogate.js"
     },
     "dependencies": {
         "@supabase/supabase-js": "^2.118.0",

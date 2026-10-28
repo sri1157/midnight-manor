@@ -1,6 +1,7 @@
 import {
-  createRoom, joinRoom, resumeSession, setConnected, leaveRoom, startGame, movePlayer, searchRoom, publicRoomState, RoomError,
+  createRoom, joinRoom, resumeSession, setConnected, leaveRoom, startGame, movePlayer, searchRoom, beginQuestion, finishQuestion, publicRoomState, RoomError,
 } from './roomManager.js';
+import { askSuspect } from '../game/suspectAgent.js';
 import { claimCase, peekCase } from '../db/caseStore.js';
 import { isDbConfigured } from '../db/supabase.js';
 import { config } from '../config.js';
@@ -107,6 +108,29 @@ export function registerSocketHandlers(io) {
       const { room, added } = searchRoom(code, playerId);
       broadcast(room);
       return { added };
+    }));
+
+    socket.on('suspect:ask', handle(async ({ suspectId, question }) => {
+      const { code, playerId } = seat();
+      const { room, entry } = beginQuestion(code, playerId, suspectId, question);
+      broadcast(room); // everyone sees the question and "thinking..."
+
+      let answer = null;
+      try {
+        const history = room.game.conversations[suspectId].filter((e) => e.a);
+        const result = await askSuspect({
+          caseData: room.case.data, suspectId, history, askerName: entry.asker, question: entry.q,
+        });
+        answer = result.answer;
+      } catch (err) {
+        console.error('Suspect could not answer:', err.message);
+      } finally {
+        finishQuestion(room, suspectId, entry, answer);
+        broadcast(room);
+      }
+
+      if (!answer) throw new RoomError('SUSPECT_SILENT', 'The suspect stares at you in silence. Try asking again.');
+      return {};
     }));
 
     socket.on('disconnect', () => {
