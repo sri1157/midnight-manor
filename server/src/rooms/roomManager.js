@@ -58,6 +58,12 @@ export function getRoom(rawCode) {
   return room;
 }
 
+/** The game must be running and the clock not expired. */
+function assertActive(room) {
+  if (room.status !== 'playing') throw new RoomError('NOT_PLAYING', 'The investigation has not started yet.');
+  if (room.game?.timeUp) throw new RoomError('TIME_UP', 'Time is up. The investigation is over.');
+}
+
 export function createRoom(hostName) {
   const code = newCode();
   const room = {
@@ -151,7 +157,7 @@ export function startGame(code, playerId) {
 /** Move a player through a doorway. The server checks the doors, not the browser. */
 export function movePlayer(code, playerId, to) {
   const room = getRoom(code);
-  if (room.status !== 'playing') throw new RoomError('NOT_PLAYING', 'The investigation has not started yet.');
+  assertActive(room);
 
   const player = room.players.find((p) => p.id === playerId);
   if (!player) throw new RoomError('NOT_IN_ROOM', 'You are not in this game.');
@@ -170,7 +176,10 @@ export function movePlayer(code, playerId, to) {
 /** Search the player's current room for clues. */
 export function searchRoom(code, playerId) {
   const room = getRoom(code);
-  if (room.status !== 'playing') throw new RoomError('NOT_PLAYING', 'The investigation has not started yet.');
+  assertActive(room);
+  if ((room.game.blackoutUntil ?? 0) > Date.now()) {
+    throw new RoomError('BLACKOUT', 'It is pitch dark. You cannot search until the lights return.');
+  }
   const player = room.players.find((p) => p.id === playerId);
   if (!player) throw new RoomError('NOT_IN_ROOM', 'You are not in this game.');
   const added = revealClues(room, player);
@@ -180,7 +189,7 @@ export function searchRoom(code, playerId) {
 /** Check a question and record it as pending. The AI answers afterwards. */
 export function beginQuestion(code, playerId, suspectId, question) {
   const room = getRoom(code);
-  if (room.status !== 'playing') throw new RoomError('NOT_PLAYING', 'The investigation has not started yet.');
+  assertActive(room);
   const player = room.players.find((p) => p.id === playerId);
   if (!player) throw new RoomError('NOT_IN_ROOM', 'You are not in this game.');
 

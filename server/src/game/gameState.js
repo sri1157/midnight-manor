@@ -19,6 +19,7 @@ export function setupGame(room) {
   const c = room.case.data;
   const rooms = shuffle(SUSPECT_ROOMS);
   room.game = {
+    gameId: `${room.code}-${Date.now()}`,
     suspectRooms: Object.fromEntries(c.suspects.map((s, i) => [s.id, rooms[i]])),
     found: [],          // [{ id, by, at }]
     searchedRooms: [],
@@ -80,5 +81,10 @@ export function gameView(room) {
     ),
     thinking: Object.keys(g.busy).filter((id) => g.busy[id]),
     askCooldownMs: ASK_COOLDOWN_MS,
+    clock: g.endsAt ? { endsAt: g.endsAt, serverNow: Date.now() } : null,
+    blackoutUntil: g.blackoutUntil ?? 0,
+    lastEvent: g.lastEvent ?? null,
+    secondVictim: g.secondVictim ?? null,
+    timeUp: Boolean(g.timeUp),
   };
 }

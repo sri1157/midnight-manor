@@ -2,6 +2,9 @@ import {
   createRoom, joinRoom, resumeSession, setConnected, leaveRoom, startGame, movePlayer, searchRoom, beginQuestion, finishQuestion, publicRoomState, RoomError,
 } from './roomManager.js';
 import { askSuspect } from '../game/suspectAgent.js';
+import { startClock, stopClock } from '../game/eventDirector.js';
+import { recall, remember } from '../db/memory.js';
+import { saveInterrogation } from '../db/interrogationStore.js';
 import { claimCase, peekCase } from '../db/caseStore.js';
 import { isDbConfigured } from '../db/supabase.js';
 import { config } from '../config.js';
@@ -86,12 +89,14 @@ export function registerSocketHandlers(io) {
       socket.data.playerId = null;
       const room = leaveRoom(code, playerId);
       if (room) broadcast(room);
+      else stopClock(code);
       return {};
     }));
 
     socket.on('game:start', handle(async () => {
       const { code, playerId } = seat();
       const room = startGame(code, playerId);
+      startClock(room, broadcast);
       broadcast(room);
       return {};
     }));
@@ -115,13 +120,28 @@ export function registerSocketHandlers(io) {
       const { room, entry } = beginQuestion(code, playerId, suspectId, question);
       broadcast(room); // everyone sees the question and "thinking..."
 
+      const g = room.game;
+      const answered = g.conversations[suspectId].filter((e) => e.a);
+      const turn = answered.length + 1;
       let answer = null;
+
       try {
-        const history = room.game.conversations[suspectId].filter((e) => e.a);
+        // the last 10 exchanges are already in the prompt; recall only older ones
+        const memories = answered.length > 10
+          ? await recall({ gameId: g.gameId, suspectId, text: entry.q, beforeTurn: answered.length - 9 })
+          : [];
+
         const result = await askSuspect({
-          caseData: room.case.data, suspectId, history, askerName: entry.asker, question: entry.q,
+          caseData: room.case.data, suspectId, history: answered, askerName: entry.asker, question: entry.q, memories,
         });
         answer = result.answer;
+
+        // save in the background: never slow the game down
+        void remember({ gameId: g.gameId, suspectId, turn, asker: entry.asker, question: entry.q, answer });
+        void saveInterrogation({
+          gameId: g.gameId, roomCode: room.code, caseId: room.case.id, suspectId,
+          asker: entry.asker, question: entry.q, answer, provider: result.provider, latencyMs: result.latencyMs,
+        });
       } catch (err) {
         console.error('Suspect could not answer:', err.message);
       } finally {

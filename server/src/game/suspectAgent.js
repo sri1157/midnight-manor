@@ -31,7 +31,7 @@ function sightings(c, s) {
   return lines;
 }
 
-export function buildSuspectSystemPrompt(c, s) {
+export function buildSuspectSystemPrompt(c, s, memories = []) {
   const others = c.suspects.filter((o) => o.id !== s.id).map((o) => `- ${o.name}, ${o.occupation}`).join('\n');
   const story = TIME_SLOTS.map((t) => `- ${t}: ${roomName(s.claimedWhereabouts[t])}`).join('\n');
   const truth = TIME_SLOTS.map((t) => `- ${t}: ${roomName(s.whereabouts[t])}`).join('\n');
@@ -66,6 +66,7 @@ ${seen.length ? `WHAT YOU SAW (you may share these):\n${seen.join('\n')}` : 'You
 
 ${role}
 
+${memories.length ? `THINGS YOU SAID EARLIER IN THIS INTERROGATION (stay consistent with them):\n${memories.map((m) => `- ${m.replace(/\n/g, ' / ')}`).join('\n')}\n` : ''}
 RULES:
 - The ONLY people in this story are: ${cast}. There are no other staff, guests or strangers you may name or describe.
   When you shift suspicion, point only at one of the other suspects.
@@ -80,13 +81,13 @@ RULES:
 }
 
 /** Ask one suspect one question. Returns { answer, question, provider, latencyMs }. */
-export async function askSuspect({ caseData, suspectId, history = [], askerName, question }) {
+export async function askSuspect({ caseData, suspectId, history = [], askerName, question, memories = [] }) {
   const s = caseData.suspects.find((x) => x.id === suspectId);
   if (!s) throw new Error(`Unknown suspect: ${suspectId}`);
   const q = String(question ?? '').trim().slice(0, MAX_QUESTION);
   if (!q) throw new Error('Empty question');
 
-  const messages = [{ role: 'system', content: buildSuspectSystemPrompt(caseData, s) }];
+  const messages = [{ role: 'system', content: buildSuspectSystemPrompt(caseData, s, memories) }];
   for (const h of history.slice(-HISTORY)) {
     messages.push({ role: 'user', content: `Detective ${h.asker}: <question>${h.q}</question>` });
     messages.push({ role: 'assistant', content: h.a });
