@@ -51,3 +51,26 @@ h1, h2, h3 { font-family: var(--font-title); letter-spacing: 0.04em; margin: 0; 
   width: 100%;
 }
 .input:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+/* --- drifting fog, shared by all screens --- */
+.fog {
+  position: absolute;
+  width: 160%;
+  height: 60%;
+  left: -30%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(180, 170, 200, 0.10) 0%, transparent 70%);
+  filter: blur(30px);
+  pointer-events: none;
+}
+.fog-a { bottom: -10%; animation: fog-drift 40s ease-in-out infinite alternate; }
+.fog-b { top: -15%; opacity: 0.6; animation: fog-drift 55s ease-in-out infinite alternate-reverse; }
+
+@keyframes fog-drift {
+  from { transform: translateX(-8%); }
+  to   { transform: translateX(8%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fog { animation: none; }
+}

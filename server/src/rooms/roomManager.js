@@ -1,6 +1,7 @@
 import { randomInt, randomUUID } from 'node:crypto';
 import { config } from '../config.js';
 import { ROOMS } from '../game/mansion.js';
+import { setupGame, revealClues, gameView } from '../game/gameState.js';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I or O: easy to read aloud
 const MAX_PLAYERS = 8;
@@ -141,6 +142,7 @@ export function startGame(code, playerId) {
   }
   if (room.case.status !== 'ready') throw new RoomError('CASE_NOT_READY', 'The mystery is not ready yet.');
 
+  setupGame(room);
   room.status = 'playing';
   room.startedAt = Date.now();
   return room;
@@ -165,6 +167,16 @@ export function movePlayer(code, playerId, to) {
   return room;
 }
 
+/** Search the player's current room for clues. */
+export function searchRoom(code, playerId) {
+  const room = getRoom(code);
+  if (room.status !== 'playing') throw new RoomError('NOT_PLAYING', 'The investigation has not started yet.');
+  const player = room.players.find((p) => p.id === playerId);
+  if (!player) throw new RoomError('NOT_IN_ROOM', 'You are not in this game.');
+  const added = revealClues(room, player);
+  return { room, added };
+}
+
 /** The ONLY room data ever sent to browsers. No case contents, no tokens. */
 export function publicRoomState(room) {
   return {
@@ -176,5 +188,6 @@ export function publicRoomState(room) {
       id, name, isHost, color, connected, location,
     })),
     case: { status: room.case.status, title: room.case.data?.title ?? null },
+    game: room.game ? gameView(room) : null,
   };
 }

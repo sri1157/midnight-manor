@@ -8,25 +8,6 @@
   background: radial-gradient(ellipse at 50% 35%, #1d1726 0%, var(--bg) 70%);
 }
 
-/* --- drifting fog --- */
-.fog {
-  position: absolute;
-  width: 160%;
-  height: 60%;
-  left: -30%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(180, 170, 200, 0.10) 0%, transparent 70%);
-  filter: blur(30px);
-  pointer-events: none;
-}
-.fog-a { bottom: -10%; animation: fog-drift 40s ease-in-out infinite alternate; }
-.fog-b { top: -15%; opacity: 0.6; animation: fog-drift 55s ease-in-out infinite alternate-reverse; }
-
-@keyframes fog-drift {
-  from { transform: translateX(-8%); }
-  to   { transform: translateX(8%); }
-}
-
 /* --- card --- */
 .home-card {
   position: relative;
@@ -119,5 +100,5 @@
 
 /* --- respect "reduce motion" settings --- */
 @media (prefers-reduced-motion: reduce) {
-  .fog, .flame, .home-title { animation: none; }
+  .flame, .home-title { animation: none; }
 }

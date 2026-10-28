@@ -1,63 +1,154 @@
 import { useEffect, useRef } from 'react';
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { WORLD, MAP_ROOMS, CORRIDORS, roomById, centerOf } from './layout.js';
+import { shortName, initialOf } from '../lib/names.js';
 
-const COLORS = {
-  room: 0x17131f,
-  roomMine: 0x2a2133,
-  border: 0x3a3045,
-  gold: 0xc9a227,
-  text: 0xece6d8,
-  corridor: 0x231d2c,
-  initial: 0x111111,
+const COLORS = { border: 0x3a3045, gold: 0xc9a227, text: 0xece6d8, corridor: 0x231d2c, dark: 0x0f0c14, ink: 0x111111 };
+
+const FLOORS = {
+  wood:   { fill: 0x1d1611, line: 0x3a2a1c },
+  stone:  { fill: 0x141419, line: 0x2c2c36 },
+  tiles:  { fill: 0x171a1d, line: 0x2b3036 },
+  marble: { fill: 0x19161f, line: 0x2c2636 },
+  grass:  { fill: 0x0f1911, line: 0x2b4a2e },
 };
+
 const AVATAR_RADIUS = 16;
-const AVATAR_GAP = 44;
+const AVATAR_GAP = 42;
+const EMPTY_CTX = { mine: null, searched: new Set(), clueCounts: new Map() };
 
-const myLocation = (players, meId) => players.find((p) => p.id === meId)?.location ?? null;
+const canReach = (from, to) => Boolean(from && from !== to && roomById(from)?.connects.includes(to));
 
-function canReach(from, to) {
-  return Boolean(from && from !== to && roomById(from)?.connects.includes(to));
+/** Floor pattern for one room, drawn once, inside the room's border. */
+function drawFloor(g, r) {
+  const f = FLOORS[r.floor] ?? FLOORS.marble;
+  const x0 = r.x + 6, y0 = r.y + 6, x1 = r.x + r.w - 6, y1 = r.y + r.h - 6;
+
+  if (r.floor === 'grass') {
+    let seed = r.x * 7 + r.y * 13 + 1; // seeded: every player sees the same garden
+    const rand = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    for (let i = 0; i < 160; i++) {
+      g.circle(x0 + rand() * (x1 - x0), y0 + rand() * (y1 - y0), 1.2 + rand() * 1.6).fill({ color: f.line, alpha: 0.8 });
+    }
+    return;
+  }
+
+  if (r.floor === 'marble') {
+    const size = 40;
+    for (let y = y0, j = 0; y < y1; y += size, j++) {
+      for (let x = x0, i = 0; x < x1; x += size, i++) {
+        if ((i + j) % 2) g.rect(x, y, Math.min(size, x1 - x), Math.min(size, y1 - y)).fill({ color: f.line, alpha: 0.35 });
+      }
+    }
+    return;
+  }
+
+  if (r.floor === 'wood') {
+    for (let y = y0, row = 0; y < y1; y += 16, row++) {
+      g.moveTo(x0, y).lineTo(x1, y);
+      for (let x = x0 + (row % 2 ? 30 : 75); x < x1; x += 90) g.moveTo(x, y).lineTo(x, Math.min(y + 16, y1));
+    }
+  } else if (r.floor === 'stone') {
+    for (let y = y0, row = 0; y < y1; y += 24, row++) {
+      g.moveTo(x0, y).lineTo(x1, y);
+      for (let x = x0 + (row % 2 ? 24 : 0); x < x1; x += 48) g.moveTo(x, y).lineTo(x, Math.min(y + 24, y1));
+    }
+  } else if (r.floor === 'tiles') {
+    for (let y = y0; y <= y1; y += 26) g.moveTo(x0, y).lineTo(x1, y);
+    for (let x = x0; x <= x1; x += 26) g.moveTo(x, y0).lineTo(x, y1);
+  }
+  g.stroke({ width: 1, color: f.line, alpha: 0.7 });
 }
 
-/** Draw one room according to where the player is and what they are hovering. */
-function paintRoom(view, mine) {
-  const { room: r, box, label, hovered } = view;
-  const isMine = r.id === mine;
-  const reachable = canReach(mine, r.id);
+/** Border, fade and badge for one room, given where the player is. */
+function paintRoom(view, ctx) {
+  const { room: r, box, floor, label, badge, hovered } = view;
+  const isMine = r.id === ctx.mine;
+  const reachable = canReach(ctx.mine, r.id);
   const faded = hovered && !reachable && !isMine;
 
   box.clear();
   box
     .roundRect(r.x, r.y, r.w, r.h, 14)
-    .fill({ color: isMine ? COLORS.roomMine : COLORS.room })
-    .stroke({
-      width: isMine ? 3 : 2,
-      color: isMine || (hovered && reachable) ? COLORS.gold : COLORS.border,
-    });
-  box.alpha = faded ? 0.45 : 1;
-  label.alpha = faded ? 0.45 : 1;
+    .fill({ color: (FLOORS[r.floor] ?? FLOORS.marble).fill })
+    .stroke({ width: isMine ? 3 : 2, color: isMine || (hovered && reachable) ? COLORS.gold : COLORS.border });
   box.cursor = reachable ? 'pointer' : 'default';
+
+  const parts = [];
+  if (ctx.searched.has(r.id)) parts.push('✓ searched');
+  const n = ctx.clueCounts.get(r.id) ?? 0;
+  if (n > 0) parts.push(`${n} clue${n > 1 ? 's' : ''}`);
+  badge.text = parts.join(' · ');
+  badge.visible = parts.length > 0;
+
+  for (const item of [box, floor, label, badge]) item.alpha = faded ? 0.4 : 1;
 }
 
 function makeAvatar(player, isMe) {
   const view = new Container();
-  const ring = new Graphics();
-  if (isMe) ring.circle(0, 0, AVATAR_RADIUS + 4).stroke({ width: 3, color: COLORS.gold });
-  const body = new Graphics().circle(0, 0, AVATAR_RADIUS).fill({ color: player.color });
+  if (isMe) view.addChild(new Graphics().circle(0, 0, AVATAR_RADIUS + 4).stroke({ width: 3, color: COLORS.gold }));
+  view.addChild(new Graphics().circle(0, 0, AVATAR_RADIUS).fill({ color: player.color }));
   const initial = new Text({
     text: player.name[0]?.toUpperCase() ?? '?',
-    style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: 16, fontWeight: '600', fill: COLORS.initial },
+    style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: 16, fontWeight: '600', fill: COLORS.ink },
   });
   initial.anchor.set(0.5);
-  view.addChild(ring, body, initial);
+  view.addChild(initial);
   return view;
 }
 
-/** Bring the scene in line with the latest room state. */
-function syncScene(scene, players, meId) {
-  const mine = myLocation(players, meId);
-  for (const view of scene.roomViews.values()) paintRoom(view, mine);
+function makeSuspectPlate(suspect) {
+  const view = new Container();
+  view.addChild(new Graphics().circle(0, 0, 24).fill({ color: COLORS.dark }).stroke({ width: 2, color: COLORS.gold }));
+  const initial = new Text({
+    text: initialOf(suspect.name),
+    style: { fontFamily: 'Cinzel, Georgia, serif', fontSize: 20, fontWeight: '700', fill: COLORS.gold },
+  });
+  initial.anchor.set(0.5);
+  const name = new Text({
+    text: shortName(suspect.name),
+    style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: 13, fontWeight: '600', fill: COLORS.gold },
+  });
+  name.anchor.set(0.5, 0);
+  name.position.set(0, 30);
+  view.addChild(initial, name);
+  return view;
+}
+
+function drawGlow(glow, roomId) {
+  glow.clear();
+  const r = roomById(roomId);
+  if (!r) return;
+  for (let i = 1; i <= 4; i++) {
+    glow.roundRect(r.x - i * 5, r.y - i * 5, r.w + i * 10, r.h + i * 10, 14 + i * 5)
+      .stroke({ width: 5, color: COLORS.gold, alpha: 0.12 - i * 0.025 });
+  }
+}
+
+/** Bring the scene in line with the latest game state. */
+function syncScene(scene, data) {
+  const { players, meId, suspects = [], searchedRooms = [], clues = [] } = data;
+  const mine = players.find((p) => p.id === meId)?.location ?? null;
+  const clueCounts = new Map();
+  for (const c of clues) clueCounts.set(c.room, (clueCounts.get(c.room) ?? 0) + 1);
+  scene.ctx = { mine, searched: new Set(searchedRooms), clueCounts };
+
+  for (const view of scene.roomViews.values()) paintRoom(view, scene.ctx);
+  if (scene.glowRoom !== mine) {
+    drawGlow(scene.glow, mine);
+    scene.glowRoom = mine;
+  }
+
+  // suspects: created once, they stay in their rooms
+  for (const s of suspects) {
+    if (scene.suspects.has(s.id)) continue;
+    const r = roomById(s.location);
+    if (!r) continue;
+    const plate = makeSuspectPlate(s);
+    plate.position.set(r.x + r.w / 2, r.y + 80);
+    scene.suspectLayer.addChild(plate);
+    scene.suspects.set(s.id, plate);
+  }
 
   // remove avatars of players who left
   for (const [id, avatar] of scene.avatars) {
@@ -67,30 +158,26 @@ function syncScene(scene, players, meId) {
     }
   }
 
-  // group players by room, then lay each group out in a small grid
+  // players gather at the bottom of their room, in a small grid
   const byRoom = new Map();
   for (const p of players) {
     if (!byRoom.has(p.location)) byRoom.set(p.location, []);
     byRoom.get(p.location).push(p);
   }
-
   for (const [roomId, group] of byRoom) {
     const r = roomById(roomId);
     if (!r) continue;
-    const c = centerOf(r);
     const cols = Math.min(4, group.length);
     const rows = Math.ceil(group.length / cols);
+    const baseY = r.y + r.h - 44 - (rows - 1) * AVATAR_GAP;
 
     group.forEach((p, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      const tx = c.x + (col - (cols - 1) / 2) * AVATAR_GAP;
-      const ty = c.y + 18 + (row - (rows - 1) / 2) * AVATAR_GAP;
-
+      const tx = r.x + r.w / 2 + ((i % cols) - (cols - 1) / 2) * AVATAR_GAP;
+      const ty = baseY + Math.floor(i / cols) * AVATAR_GAP;
       let avatar = scene.avatars.get(p.id);
       if (!avatar) {
         const view = makeAvatar(p, p.id === meId);
-        view.position.set(tx, ty); // appear in place, no glide from the corner
+        view.position.set(tx, ty);
         scene.avatarLayer.addChild(view);
         avatar = { view };
         scene.avatars.set(p.id, avatar);
@@ -102,13 +189,13 @@ function syncScene(scene, players, meId) {
   }
 }
 
-export default function MansionMap({ players, meId, onMove, onBlocked }) {
+export default function MansionMap({ players, meId, suspects, searchedRooms, clues, onMove, onBlocked }) {
   const hostRef = useRef(null);
   const sceneRef = useRef(null);
-  const latest = useRef({ players, meId, onMove, onBlocked });
+  const latest = useRef({ players, meId, suspects, searchedRooms, clues, onMove, onBlocked });
 
   useEffect(() => {
-    latest.current = { players, meId, onMove, onBlocked };
+    latest.current = { players, meId, suspects, searchedRooms, clues, onMove, onBlocked };
   });
 
   // Create the PixiJS scene once.
@@ -118,14 +205,12 @@ export default function MansionMap({ players, meId, onMove, onBlocked }) {
     let observer = null;
 
     (async () => {
-      await document.fonts.load('700 20px Cinzel').catch(() => {});
+      await Promise.all([
+        document.fonts.load('700 20px Cinzel'),
+        document.fonts.load('600 13px Inter'),
+      ]).catch(() => {});
       const instance = new Application();
-      await instance.init({
-        backgroundAlpha: 0,
-        antialias: true,
-        resolution: window.devicePixelRatio || 1,
-        autoDensity: true,
-      });
+      await instance.init({ backgroundAlpha: 0, antialias: true, resolution: window.devicePixelRatio || 1, autoDensity: true });
       if (cancelled) {
         instance.destroy(true, { children: true });
         return;
@@ -137,21 +222,34 @@ export default function MansionMap({ players, meId, onMove, onBlocked }) {
       const world = new Container();
       app.stage.addChild(world);
 
-      // corridors (drawn under the rooms, so only the doorways show)
+      const scene = {
+        roomViews: new Map(),
+        avatars: new Map(),
+        suspects: new Map(),
+        ctx: EMPTY_CTX,
+        glowRoom: undefined,
+        glow: new Graphics(),
+        suspectLayer: new Container(),
+        avatarLayer: new Container(),
+      };
+
+      // layers, bottom to top: corridors, glow, rooms, suspects, avatars
       const corridors = new Graphics();
       for (const [a, b] of CORRIDORS) {
         const A = centerOf(roomById(a));
         const B = centerOf(roomById(b));
         corridors.moveTo(A.x, A.y).lineTo(B.x, B.y);
       }
-      corridors.stroke({ width: 26, color: COLORS.corridor });
-      world.addChild(corridors);
+      corridors.stroke({ width: 28, color: COLORS.corridor });
+      world.addChild(corridors, scene.glow);
 
-      // rooms
-      const roomViews = new Map();
       for (const r of MAP_ROOMS) {
         const box = new Graphics();
         box.eventMode = 'static';
+        const floor = new Graphics();
+        floor.eventMode = 'none';
+        drawFloor(floor, r);
+
         const label = new Text({
           text: r.name,
           style: { fontFamily: 'Cinzel, Georgia, serif', fontSize: 20, fontWeight: '700', fill: COLORS.text },
@@ -159,36 +257,37 @@ export default function MansionMap({ players, meId, onMove, onBlocked }) {
         label.anchor.set(0.5, 0);
         label.position.set(r.x + r.w / 2, r.y + 12);
 
-        const view = { room: r, box, label, hovered: false };
-        const repaint = () => paintRoom(view, myLocation(latest.current.players, latest.current.meId));
+        const badge = new Text({
+          text: '',
+          style: { fontFamily: 'Inter, system-ui, sans-serif', fontSize: 12, fontWeight: '600', fill: COLORS.gold },
+        });
+        badge.position.set(r.x + 12, r.y + r.h - 22);
 
-        box.on('pointerover', () => { view.hovered = true; repaint(); });
-        box.on('pointerout', () => { view.hovered = false; repaint(); });
+        const view = { room: r, box, floor, label, badge, hovered: false };
+        box.on('pointerover', () => { view.hovered = true; paintRoom(view, scene.ctx); });
+        box.on('pointerout', () => { view.hovered = false; paintRoom(view, scene.ctx); });
         box.on('pointertap', () => {
-          const { players: ps, meId: id, onMove: move, onBlocked: blocked } = latest.current;
-          const mine = myLocation(ps, id);
+          const { mine } = scene.ctx;
           if (!mine || r.id === mine) return;
-          if (!canReach(mine, r.id)) return blocked?.('No door leads there from here.');
-          move(r.id);
+          if (!canReach(mine, r.id)) return latest.current.onBlocked?.('No door leads there from here.');
+          latest.current.onMove(r.id);
         });
 
-        world.addChild(box, label);
-        roomViews.set(r.id, view);
+        world.addChild(box, floor, label, badge);
+        scene.roomViews.set(r.id, view);
       }
+      world.addChild(scene.suspectLayer, scene.avatarLayer);
 
-      // avatars on top, gliding toward their targets every frame
-      const avatarLayer = new Container();
-      world.addChild(avatarLayer);
-      const avatars = new Map();
+      // glide avatars; let the candle glow breathe
       app.ticker.add((ticker) => {
         const k = Math.min(1, 0.15 * ticker.deltaTime);
-        for (const a of avatars.values()) {
+        for (const a of scene.avatars.values()) {
           a.view.x += (a.tx - a.view.x) * k;
           a.view.y += (a.ty - a.view.y) * k;
         }
+        scene.glow.alpha = 0.75 + 0.25 * Math.sin(performance.now() / 600);
       });
 
-      // scale the whole world to fit the container
       const fit = () => {
         const { clientWidth: w, clientHeight: h } = host;
         if (!w || !h) return;
@@ -201,8 +300,8 @@ export default function MansionMap({ players, meId, onMove, onBlocked }) {
       observer.observe(host);
       fit();
 
-      sceneRef.current = { roomViews, avatarLayer, avatars };
-      syncScene(sceneRef.current, latest.current.players, latest.current.meId);
+      sceneRef.current = scene;
+      syncScene(scene, latest.current);
     })();
 
     return () => {
@@ -213,10 +312,10 @@ export default function MansionMap({ players, meId, onMove, onBlocked }) {
     };
   }, []);
 
-  // Update the existing scene whenever players change.
+  // Update the existing scene whenever the game changes.
   useEffect(() => {
-    if (sceneRef.current) syncScene(sceneRef.current, players, meId);
-  }, [players, meId]);
+    if (sceneRef.current) syncScene(sceneRef.current, { players, meId, suspects, searchedRooms, clues });
+  }, [players, meId, suspects, searchedRooms, clues]);
 
   return <div ref={hostRef} className="mansion-map" />;
 }

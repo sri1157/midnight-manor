@@ -1,32 +1,139 @@
 .game {
+  position: relative;
+  overflow: hidden;
   height: 100%;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 8px;
+  grid-template-rows: auto 1fr;
+  gap: 10px;
   padding: 12px 16px 16px;
   background: radial-gradient(ellipse at 50% 30%, #1a1522 0%, var(--bg) 75%);
 }
+.game > :not(.fog) { position: relative; }
 
-.game-bar { text-align: center; }
+.game-bar { text-align: center; position: relative; }
 .game-title { font-size: clamp(1.1rem, 4vw, 1.6rem); color: var(--gold); }
-.game-where { margin: 4px 0 0; color: var(--text-dim); }
-.game-where strong { color: var(--text); }
+.game-victim { margin: 4px 0 0; color: var(--text-dim); font-size: 0.9rem; }
+.game-leave {
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
 
-.game-map { position: relative; min-height: 0; }
+.game-body {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 16px;
+}
+
+.game-map { position: relative; min-height: 0; border-radius: 16px; }
+.game-map::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 16px;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.6) 100%);
+}
 .mansion-map { position: absolute; inset: 0; }
 .mansion-map canvas { display: block; }
 
-.game-hint { margin: 0; text-align: center; color: var(--text-dim); font-size: 0.85rem; }
+/* --- side panel --- */
+.game-panel {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+.panel-block {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+}
+.panel-heading { font-size: 1rem; display: flex; justify-content: space-between; align-items: baseline; }
+.panel-heading span { color: var(--gold); font-family: var(--font-body); font-size: 0.9rem; }
+.panel-empty { margin: 0; color: var(--text-dim); font-size: 0.9rem; }
+
+.suspect-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--gold);
+  background: var(--gold-soft);
+}
+.suspect-name { margin: 0; font-family: var(--font-title); font-weight: 700; color: var(--gold); }
+.suspect-meta { margin: 0; font-size: 0.8rem; color: var(--text-dim); }
+.suspect-says { margin: 0; font-style: italic; font-size: 0.9rem; }
+
+/* --- suspects list --- */
+.suspect-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.suspect-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+.suspect-list li.is-here { border-color: var(--gold); background: var(--gold-soft); }
+.suspect-dot {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--gold);
+  color: var(--gold);
+  font-family: var(--font-title);
+  font-weight: 700;
+}
+.suspect-info { display: grid; min-width: 0; }
+.suspect-info strong { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.suspect-info small { color: var(--text-dim); font-size: 0.75rem; }
+.suspect-where { font-size: 0.8rem; color: var(--text-dim); }
+
+.clue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.clue {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-input);
+  border-left: 3px solid var(--gold);
+}
+.clue-title { margin: 0 0 4px; font-weight: 600; }
+.clue-text { margin: 0 0 6px; font-size: 0.9rem; color: var(--text); }
+.clue-meta { margin: 0; font-size: 0.75rem; color: var(--text-dim); }
 
 .game-toast {
   position: fixed;
   left: 50%;
-  bottom: 24px;
+  bottom: 56px;
   transform: translateX(-50%);
   padding: 10px 16px;
   border-radius: var(--radius);
   background: var(--bg-raised);
-  border: 1px solid var(--blood);
-  color: #f2c4c9;
+  border: 1px solid var(--gold);
+  color: var(--text);
   font-size: 0.9rem;
+  z-index: 10;
+}
+
+/* --- phones and small screens: stack map over panel --- */
+@media (max-width: 860px) {
+  .game { grid-template-rows: auto auto; height: auto; min-height: 100%; }
+  .game-body { grid-template-columns: 1fr; }
+  .game-map { height: 45vh; }
+  .game-panel { overflow: visible; }
 }

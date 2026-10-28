@@ -1,13 +1,13 @@
 /** The mansion as drawn on screen, in world units. Connections mirror the server's mansion.js. */
-export const WORLD = { width: 1100, height: 460 };
+export const WORLD = { width: 1100, height: 500 };
 
 export const MAP_ROOMS = [
-  { id: 'library', name: 'Library',     x: 260, y: 30,  w: 220, h: 140, connects: ['hall', 'study'] },
-  { id: 'study',   name: 'Study',       x: 560, y: 30,  w: 220, h: 140, connects: ['hall', 'library'] },
-  { id: 'garden',  name: 'Garden',      x: 20,  y: 260, w: 200, h: 150, connects: ['hall'] },
-  { id: 'hall',    name: 'Grand Hall',  x: 300, y: 240, w: 340, h: 190, connects: ['library', 'study', 'kitchen', 'garden'] },
-  { id: 'kitchen', name: 'Kitchen',     x: 710, y: 260, w: 170, h: 150, connects: ['hall', 'cellar'] },
-  { id: 'cellar',  name: 'Wine Cellar', x: 910, y: 260, w: 170, h: 150, connects: ['kitchen'] },
+  { id: 'garden',  name: 'Garden',      floor: 'grass',  x: 10,  y: 20,  w: 210, h: 460, connects: ['hall'] },
+  { id: 'library', name: 'Library',     floor: 'wood',   x: 250, y: 20,  w: 270, h: 200, connects: ['hall', 'study'] },
+  { id: 'study',   name: 'Study',       floor: 'wood',   x: 580, y: 20,  w: 270, h: 200, connects: ['hall', 'library'] },
+  { id: 'cellar',  name: 'Wine Cellar', floor: 'stone',  x: 880, y: 20,  w: 210, h: 200, connects: ['kitchen'] },
+  { id: 'hall',    name: 'Grand Hall',  floor: 'marble', x: 250, y: 260, w: 600, h: 220, connects: ['library', 'study', 'kitchen', 'garden'] },
+  { id: 'kitchen', name: 'Kitchen',     floor: 'tiles',  x: 880, y: 260, w: 210, h: 220, connects: ['hall', 'cellar'] },
 ];
 
 export const roomById = (id) => MAP_ROOMS.find((r) => r.id === id);
